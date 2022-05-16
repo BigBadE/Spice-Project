@@ -1,7 +1,7 @@
 ﻿using RimWorld;
 using Verse;
 
-namespace Spice.Hediffs
+namespace Spice.Defs
 {
     [DefOf]
     public class SpiceHediffsDefOf

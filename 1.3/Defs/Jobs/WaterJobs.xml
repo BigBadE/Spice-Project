@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <JobDef>
+        <defName>Spice_Drink</defName>
+        <driverClass>Spice.Jobs.JobDriver_Drink</driverClass>
+    </JobDef>
+</Defs>

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using RimWorld;
-using Spice.Hediffs;
+using Spice.Defs;
+using Spice.Game;
 using UnityEngine;
 using Verse;
 
@@ -9,64 +10,26 @@ namespace Spice.Needs
     public class Need_Water : Need
     {
         private int lastNonDehydratedTick = -99999;
-        public const float BaseFoodFallPerTick = 2.666667E-05f;
-        public const float FallPerTickFactor_Hungry = 0.5f;
-        public const float FallPerTickFactor_UrgentlyHungry = 0.25f;
-        private const float BaseMalnutritionSeverityPerDay = 0.17f;
-        private const float BaseMalnutritionSeverityPerInterval = 0.001133333f;
 
-        public bool Starving => CurCategory == HungerCategory.Starving;
+        public bool Dehydrated => CurLevelPercentage <= 0;
 
-        public float PercentageThreshUrgentlyHungry => pawn.RaceProps.FoodLevelPercentageWantEat * 0.4f;
+        public float PercentageThreshUrgentlyThirsty => pawn.RaceProps.FoodLevelPercentageWantEat * 0.4f;
 
-        public float PercentageThreshHungry => pawn.RaceProps.FoodLevelPercentageWantEat * 0.8f;
-
-        public float NutritionBetweenHungryAndFed => (1f - PercentageThreshHungry) * MaxLevel;
-
-        public HungerCategory CurCategory
-        {
-            get
-            {
-                if (CurLevelPercentage <= 0.0)
-                    return HungerCategory.Starving;
-                if (CurLevelPercentage < (double) PercentageThreshUrgentlyHungry)
-                    return HungerCategory.UrgentlyHungry;
-                return CurLevelPercentage < (double) PercentageThreshHungry
-                    ? HungerCategory.Hungry
-                    : HungerCategory.Fed;
-            }
-        }
-
-        public float FoodFallPerTick => WaterPerTickAssuming();
-
-        public int TicksUntilHungryWhenFed => Mathf.CeilToInt(NutritionBetweenHungryAndFed /
-                                                              WaterPerTickAssuming());
-
-        public int TicksUntilHungryWhenFedIgnoringMalnutrition => Mathf.CeilToInt(NutritionBetweenHungryAndFed /
-            WaterPerTickAssuming(true));
+        public float PercentageThreshThirsty => pawn.RaceProps.FoodLevelPercentageWantEat * 0.8f;
 
         public override int GUIChangeArrow => -1;
 
         public override float MaxLevel => pawn.BodySize * pawn.ageTracker.CurLifeStage.foodMaxFactor;
 
-        public float NutritionWanted => MaxLevel - CurLevel;
+        public float WaterWanted => MaxLevel - CurLevel;
 
+        //TODO switch to thirst rate somehow
         private float DehydrationRate =>
-            (float) (Need_Food.BaseHungerRateFactor(pawn.ageTracker.CurLifeStage, pawn.def) *
+            (float) (BaseThirstRateFactor(pawn.ageTracker.CurLifeStage, pawn.def) *
                      (double) pawn.health.hediffSet.HungerRateFactor *
-                     (pawn.story == null || pawn.story.traits == null
-                         ? 1.0
-                         : pawn.story.traits.HungerRateFactor)) *
-            pawn.GetStatValue(StatDefOf.HungerRateMultiplier);
-
-        private float DehydrationRateIgnoringMalnutrition =>
-            (float) (pawn.ageTracker.CurLifeStage.hungerRateFactor *
-                     (double) pawn.RaceProps.baseHungerRate *
-                     pawn.health.hediffSet.GetHungerRateFactor(HediffDefOf.Malnutrition) *
-                     (pawn.story == null || pawn.story.traits == null
-                         ? 1.0
-                         : pawn.story.traits.HungerRateFactor)) *
-            pawn.GetStatValue(StatDefOf.HungerRateMultiplier);
+                     (pawn.story?.traits?.HungerRateFactor ?? 1.0)) *
+            pawn.GetStatValue(SpiceStatsDefOf.Spice_ThirstRateMultiplier) * 
+            (1-pawn.Map.GetComponent<HumidityManager>().GetHumidity(pawn.GetRoom()).CurrentHumidity*.75f);
 
         public int TicksDehydrated => Mathf.Max(0, Find.TickManager.TicksGame - lastNonDehydratedTick);
 
@@ -84,15 +47,9 @@ namespace Spice.Needs
             Scribe_Values.Look(ref lastNonDehydratedTick, "lastNonDehydratedTick", -99999);
         }
 
-        public float WaterPerTickAssuming(bool ignoreDehydration = false)
-        {
-            float hungerRate = ignoreDehydration ? DehydrationRateIgnoringMalnutrition : DehydrationRate;
-            return hungerRate;
-        }
-
         public override void NeedInterval()
         {
-            if (!Starving)
+            if (!Dehydrated)
             {
                 lastNonDehydratedTick = Find.TickManager.TicksGame;
             }
@@ -102,12 +59,21 @@ namespace Spice.Needs
                 return;
             }
 
-            CurLevel -= FoodFallPerTick * 150f;
+            float lost = DehydrationRate * 150f;
+            CurLevel -= lost;
 
-            if (Starving)
+            if (Dehydrated)
+            {
                 HealthUtility.AdjustSeverity(pawn, SpiceHediffsDefOf.Spice_Dehydration, DehydrationSeverityPerInterval);
+            }
             else
-                HealthUtility.AdjustSeverity(pawn, SpiceHediffsDefOf.Spice_Dehydration, -DehydrationSeverityPerInterval);
+            {
+                HealthUtility.AdjustSeverity(pawn, SpiceHediffsDefOf.Spice_Dehydration,
+                    -DehydrationSeverityPerInterval);
+            }
+
+            pawn.Map.GetComponent<HumidityManager>().GetHumidity(pawn.GetRoom()).CurrentHumidity += 
+                lost / pawn.GetRoom().CellCount;
         }
 
         public override void SetInitialLevel()
@@ -134,8 +100,8 @@ namespace Spice.Needs
                 threshPercents = new List<float>();
             }
             threshPercents.Clear();
-            threshPercents.Add(PercentageThreshHungry);
-            threshPercents.Add(PercentageThreshUrgentlyHungry);
+            threshPercents.Add(PercentageThreshThirsty);
+            threshPercents.Add(PercentageThreshUrgentlyThirsty);
 
             base.DrawOnGUI(rect, maxThresholdMarkers, customMargin, drawArrows, doTooltip, rectForTooltip);
         }

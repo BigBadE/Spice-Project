@@ -3,4 +3,23 @@
     <StatDef>
         <defName>DehydrationRateMultiplier</defName>
     </StatDef>
+
+    <StatDef>
+        <defName>Water</defName>
+        <label>water</label>
+        <description>How much water this gives.</description>
+        <category>BasicsNonPawnImportant</category>
+        <defaultBaseValue>0</defaultBaseValue>
+        <minValue>0</minValue>
+        <showIfUndefined>false</showIfUndefined>
+        <toStringStyle>FloatTwo</toStringStyle>
+        <parts>
+            <li Class="StatPart_BodySize" />
+            <li Class="StatPart_NaturalNotMissingBodyPartsCoverage" />
+            <li Class="StatPart_PlantGrowthNutritionFactor" />
+            <li Class="StatPart_IsFlesh" />
+            <li Class="StatPart_IsCorpseFresh" />
+        </parts>
+        <displayPriorityInCategory>3000</displayPriorityInCategory>
+    </StatDef>
 </Defs>
