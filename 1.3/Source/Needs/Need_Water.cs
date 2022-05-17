@@ -29,7 +29,7 @@ namespace Spice.Needs
                      (double) pawn.health.hediffSet.HungerRateFactor *
                      (pawn.story?.traits?.HungerRateFactor ?? 1.0)) *
             pawn.GetStatValue(SpiceStatsDefOf.Spice_ThirstRateMultiplier) * 
-            (1-pawn.Map.GetComponent<HumidityManager>().GetHumidity(pawn.GetRoom()).CurrentHumidity*.75f);
+            (1-GetHumidity())*.75f;
 
         public int TicksDehydrated => Mathf.Max(0, Find.TickManager.TicksGame - lastNonDehydratedTick);
 
@@ -39,6 +39,7 @@ namespace Spice.Needs
         public Need_Water(Pawn pawn)
             : base(pawn)
         {
+            curLevelInt = .8f;
         }
 
         public override void ExposeData()
@@ -47,6 +48,21 @@ namespace Spice.Needs
             Scribe_Values.Look(ref lastNonDehydratedTick, "lastNonDehydratedTick", -99999);
         }
 
+        private float GetHumidity()
+        {
+            if (pawn.Map != null)
+            {
+                return pawn.Map.GetComponent<HumidityManager>().GetHumidity(pawn.GetRoom()).CurrentHumidity;
+            }
+
+            if (pawn.Tile != -1)
+            {
+                return HumidityManager.GetTileHumidity(Current.Game.World.grid[pawn.Tile]);
+            }
+
+            return 1;
+        }
+        
         public override void NeedInterval()
         {
             if (!Dehydrated)
@@ -72,8 +88,11 @@ namespace Spice.Needs
                     -DehydrationSeverityPerInterval);
             }
 
-            pawn.Map.GetComponent<HumidityManager>().GetHumidity(pawn.GetRoom()).CurrentHumidity += 
-                lost / pawn.GetRoom().CellCount;
+            if (pawn.Map != null)
+            {
+                pawn.Map.GetComponent<HumidityManager>().GetHumidity(pawn.GetRoom()).CurrentHumidity +=
+                    lost / pawn.GetRoom().CellCount;
+            }
         }
 
         public override void SetInitialLevel()

@@ -25,9 +25,7 @@ namespace Spice.Game
             Tile tileInfo = map.TileInfo;
             OutdoorsHumidity = new HumidityData
             {
-                Equilibrium = Mathf.Clamp01(tileInfo.rainfall / 1.12f * .75f +
-                                            (1 - tileInfo.temperature / 50) * .05f +
-                                            (int) tileInfo.hilliness / 5f * .2f)
+                Equilibrium = GetTileHumidity(tileInfo)
             };
         }
 
@@ -41,9 +39,16 @@ namespace Spice.Game
 
         public HumidityData GetHumidity(Room room)
         {
-            return room.UsesOutdoorTemperature ? OutdoorsHumidity : RoomManager[room];
+            return room == null ? OutdoorsHumidity : room.UsesOutdoorTemperature ? OutdoorsHumidity : RoomManager[room];
         }
 
+        public static float GetTileHumidity(Tile tileInfo)
+        {
+            return Mathf.Clamp01(tileInfo.rainfall / 1.12f * .75f +
+                                 (1 - tileInfo.temperature / 50) * .05f +
+                                 (int)tileInfo.hilliness / 5f * .2f);
+        }
+        
         public void Remove(Room room)
         {
             RoomManager.Remove(room);

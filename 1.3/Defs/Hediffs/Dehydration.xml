@@ -2,5 +2,71 @@
 <Defs>
     <HediffDef>
         <defName>Spice_Dehydration</defName>
+        <label>dehydration</label>
+        <description>Abnormally water in the body. Dehydration is always very unpleaseant, but its initial effects are mild. Without water, though, a dehytrated creature will waste away, losing muscle mass and capacities. Dehydration ends with death.
+            \nUpon drinking dehydration naturally recovers over time.</description>
+        <lethalSeverity>1</lethalSeverity>
+        <scenarioCanAdd>true</scenarioCanAdd>
+        <stages>
+            <li>
+                <label>trivial</label>
+                <socialFightChanceFactor>1.5</socialFightChanceFactor>
+                <hungerRateFactorOffset>0.5</hungerRateFactorOffset>
+                <capMods>
+                    <li>
+                        <capacity>Consciousness</capacity>
+                        <offset>-0.05</offset>
+                    </li>
+                </capMods>
+            </li>
+            <li>
+                <minSeverity>0.2</minSeverity>
+                <label>minor</label>
+                <socialFightChanceFactor>2</socialFightChanceFactor>
+                <hungerRateFactorOffset>0.6</hungerRateFactorOffset>
+                <capMods>
+                    <li>
+                        <capacity>Consciousness</capacity>
+                        <offset>-0.10</offset>
+                    </li>
+                </capMods>
+            </li>
+            <li>
+                <minSeverity>0.4</minSeverity>
+                <label>moderate</label>
+                <socialFightChanceFactor>2.5</socialFightChanceFactor>
+                <hungerRateFactorOffset>0.6</hungerRateFactorOffset>
+                <capMods>
+                    <li>
+                        <capacity>Consciousness</capacity>
+                        <offset>-0.20</offset>
+                    </li>
+                </capMods>
+            </li>
+            <li>
+                <minSeverity>0.6</minSeverity>
+                <label>severe</label>
+                <socialFightChanceFactor>3</socialFightChanceFactor>
+                <hungerRateFactorOffset>0.6</hungerRateFactorOffset>
+                <capMods>
+                    <li>
+                        <capacity>Consciousness</capacity>
+                        <offset>-0.30</offset>
+                    </li>
+                </capMods>
+            </li>
+            <li>
+                <minSeverity>0.8</minSeverity>
+                <label>extreme</label>
+                <lifeThreatening>true</lifeThreatening>
+                <hungerRateFactorOffset>0.6</hungerRateFactorOffset>
+                <capMods>
+                    <li>
+                        <capacity>Consciousness</capacity>
+                        <setMax>0.1</setMax>
+                    </li>
+                </capMods>
+            </li>
+        </stages>
     </HediffDef>
 </Defs>

@@ -11,25 +11,8 @@ namespace Spice.Jobs
     {
         private bool usingNutrientPasteDispenser;
         private bool eatingFromInventory;
-        public const float EatCorpseBodyPartsUntilFoodLevelPct = 0.9f;
-        public const TargetIndex IngestibleSourceInd = TargetIndex.A;
-        private const TargetIndex TableCellInd = TargetIndex.B;
-        private const TargetIndex ExtraIngestiblesToCollectInd = TargetIndex.C;
 
-        public bool EatingFromInventory => eatingFromInventory;
-
-        private Thing IngestibleSource => job.GetTarget(TargetIndex.A).Thing;
-
-        private float ChewDurationMultiplier
-        {
-            get
-            {
-                Thing ingestibleSource = IngestibleSource;
-                return ingestibleSource.def.ingestible != null && !ingestibleSource.def.ingestible.useEatingSpeedStat
-                    ? 1f
-                    : 1f / pawn.GetStatValue(StatDefOf.EatingSpeed);
-            }
-        }
+        private Thing WaterSource => job.GetTarget(TargetIndex.A).Thing;
 
         public override void ExposeData()
         {
@@ -62,18 +45,18 @@ namespace Spice.Jobs
         public override void Notify_Starting()
         {
             base.Notify_Starting();
-            usingNutrientPasteDispenser = IngestibleSource is Building_NutrientPasteDispenser;
+            usingNutrientPasteDispenser = WaterSource is Building_NutrientPasteDispenser;
             eatingFromInventory =
-                pawn.inventory != null && pawn.inventory.Contains(IngestibleSource);
+                pawn.inventory != null && pawn.inventory.Contains(WaterSource);
         }
 
         public override bool TryMakePreToilReservations(bool errorOnFailed)
         {
-            if (pawn.Faction != null && !(IngestibleSource is Building_NutrientPasteDispenser))
+            if (pawn.Faction != null && !(WaterSource is Building_NutrientPasteDispenser))
             {
-                Thing ingestibleSource = IngestibleSource;
-                if (!pawn.Reserve((LocalTargetInfo) ingestibleSource, job, 10,
-                    FoodUtility.GetMaxAmountToPickup(ingestibleSource, pawn, job.count),
+                Thing waterSource = WaterSource;
+                if (!pawn.Reserve((LocalTargetInfo) waterSource, job, 10,
+                    FoodUtility.GetMaxAmountToPickup(waterSource, pawn, job.count),
                     errorOnFailed: errorOnFailed))
                     return false;
             }
@@ -83,74 +66,56 @@ namespace Spice.Jobs
 
         protected override IEnumerable<Toil> MakeNewToils()
         {
-            if(!(IngestibleSource is Building)) {
-                this.FailOn(() => !IngestibleSource.Destroyed);
+            if(!(WaterSource is Building)) {
+                this.FailOn(() => !WaterSource.Destroyed);
             }
 
-            // ISSUE: reference to a compiler-generated method
-            Toil chew = Toils_Ingest.ChewIngestible(pawn, ChewDurationMultiplier, TargetIndex.A, TargetIndex.B)
-                .FailOn(new Func<Toil, bool>(\u003CMakeNewToils\u003Eb__16_1))
+            Toil drink = Toils_Drink.DrinkWater(pawn, TargetIndex.A)
+                .FailOn(toil => !WaterSource.Spawned && pawn.carryTracker?.CarriedThing != WaterSource)
                 .FailOnCannotTouch(TargetIndex.A, PathEndMode.Touch);
-            foreach (Toil ingestToil in PrepareToIngestToils(chew))
+            foreach (Toil ingestToil in PrepareToDrinkToils(drink))
+            {
                 yield return ingestToil;
-            yield return chew;
+            }
+
+            yield return drink;
             yield return Toils_Ingest.FinalizeIngest(pawn, TargetIndex.A);
-            // ISSUE: reference to a compiler-generated method
-            yield return Toils_Jump.JumpIf(chew, \u003CMakeNewToils\u003Eb__16_2);
         }
 
-        private IEnumerable<Toil> PrepareToIngestToils(Toil chewToil)
+        private IEnumerable<Toil> PrepareToDrinkToils(Toil chewToil)
         {
-            if (usingNutrientPasteDispenser)
-                return PrepareToIngestToils_Dispenser();
             return pawn.RaceProps.ToolUser
                 ? PrepareToIngestToils_ToolUser(chewToil)
                 : PrepareToIngestToils_NonToolUser();
-        }
-
-        private IEnumerable<Toil> PrepareToIngestToils_Dispenser()
-        {
-            JobDriver_Drink jobDriverIngest = this;
-            yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.InteractionCell)
-                .FailOnDespawnedNullOrForbidden(TargetIndex.A);
-            yield return Toils_Ingest.TakeMealFromDispenser(TargetIndex.A, jobDriverIngest.pawn);
-            yield return Toils_Ingest.CarryIngestibleToChewSpot(jobDriverIngest.pawn, TargetIndex.A)
-                .FailOnDestroyedNullOrForbidden(TargetIndex.A);
-            yield return Toils_Ingest.FindAdjacentEatSurface(TargetIndex.B, TargetIndex.A);
         }
 
         private IEnumerable<Toil> PrepareToIngestToils_ToolUser(Toil chewToil)
         {
             if (eatingFromInventory)
             {
-                yield return Toils_Misc.TakeItemFromInventoryToCarrier(jobDriverIngest.pawn, TargetIndex.A);
+                yield return Toils_Misc.TakeItemFromInventoryToCarrier(pawn, TargetIndex.A);
             }
             else
             {
-                yield return ReserveWater();
+                yield return ReserveDrink();
                 Toil gotoToPickup = Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.ClosestTouch)
                     .FailOnDespawnedNullOrForbidden(TargetIndex.A);
-                // ISSUE: reference to a compiler-generated method
+                
                 yield return Toils_Jump.JumpIf(gotoToPickup,
-                    jobDriverIngest.\u003CPrepareToIngestToils_ToolUser\u003Eb__19_0);
+                    () => pawn.health.capacities.CapableOf(PawnCapacityDefOf.Manipulation));
                 yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.Touch)
                     .FailOnDespawnedNullOrForbidden(TargetIndex.A);
                 yield return Toils_Jump.Jump(chewToil);
                 yield return gotoToPickup;
-                yield return Toils_Ingest.PickupIngestible(TargetIndex.A, jobDriverIngest.pawn);
+                yield return Toils_Ingest.PickupIngestible(TargetIndex.A, pawn);
                 gotoToPickup = null;
             }
 
-            if (jobDriverIngest.job.takeExtraIngestibles > 0)
+            if (job.takeExtraIngestibles > 0)
             {
-                foreach (Toil extraIngestible in jobDriverIngest.TakeExtraIngestibles())
+                foreach (Toil extraIngestible in TakeExtraDrinks())
                     yield return extraIngestible;
             }
-
-            if (!jobDriverIngest.pawn.Drafted)
-                yield return Toils_Ingest.CarryIngestibleToChewSpot(jobDriverIngest.pawn, TargetIndex.A)
-                    .FailOnDestroyedOrNull(TargetIndex.A);
-            yield return Toils_Ingest.FindAdjacentEatSurface(TargetIndex.B, TargetIndex.A);
         }
 
         private IEnumerable<Toil> PrepareToIngestToils_NonToolUser()
@@ -159,7 +124,7 @@ namespace Spice.Jobs
             yield return Toils_Goto.GotoThing(TargetIndex.A, PathEndMode.Touch);
         }
 
-        private IEnumerable<Toil> TakeExtraIngestibles()
+        private IEnumerable<Toil> TakeExtraDrinks()
         {
             if (pawn.health.capacities.CapableOf(PawnCapacityDefOf.Manipulation))
             {
@@ -167,11 +132,11 @@ namespace Spice.Jobs
                 Toil findExtraFoodToCollect = new Toil();
                 findExtraFoodToCollect.initAction = () =>
                 {
-                    if (pawn.inventory.innerContainer.TotalStackCountOfDef(IngestibleSource.def) >=
+                    if (pawn.inventory.innerContainer.TotalStackCountOfDef(WaterSource.def) >=
                         job.takeExtraIngestibles)
                         return;
                     Thing thing = GenClosest.ClosestThingReachable(pawn.Position, pawn.Map,
-                        ThingRequest.ForDef(IngestibleSource.def), PathEndMode.Touch, TraverseParms.For(pawn),
+                        ThingRequest.ForDef(WaterSource.def), PathEndMode.Touch, TraverseParms.For(pawn),
                         30f,
                         x =>
                             pawn.CanReserve((LocalTargetInfo) x, 10, 1) && !x.IsForbidden(pawn) &&
@@ -188,7 +153,7 @@ namespace Spice.Jobs
                 yield return Toils_Haul.TakeToInventory(TargetIndex.C,
                     () =>
                         job.takeExtraIngestibles -
-                        pawn.inventory.innerContainer.TotalStackCountOfDef(IngestibleSource.def));
+                        pawn.inventory.innerContainer.TotalStackCountOfDef(WaterSource.def));
                 yield return findExtraFoodToCollect;
             }
         }
