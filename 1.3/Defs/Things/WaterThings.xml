@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <ThingDef ParentName="BuildingBase">
+        <defName>Spice_RainCollector</defName>
+        <label>rain collector</label>
+        <description>Collects and stores water from rain.</description>
+        <thingClass>Building</thingClass>
+        <drawerType>MapMeshAndRealTime</drawerType>
+        <!-- Get sprite -->
+        <graphicData>
+            <texPath>Things/Building/Power/SolarCollector</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <drawSize>(4,4)</drawSize>
+            <shadowData>
+                <volume>(3.5,0.75,3.4)</volume>
+                <offset>(0,0,0)</offset>
+            </shadowData>
+            <damageData>
+                <rect>(0,0.6,4,2.8)</rect>
+            </damageData>
+        </graphicData>
+        <castEdgeShadows>true</castEdgeShadows>
+        <rotatable>false</rotatable>
+        <altitudeLayer>Building</altitudeLayer>
+        <canOverlapZones>false</canOverlapZones>
+        <statBases>
+            <MaxHitPoints>200</MaxHitPoints>
+            <WorkToBuild>1000</WorkToBuild>
+            <Flammability>0.7</Flammability>
+        </statBases>
+        <tickerType>Normal</tickerType>
+        <size>(4,4)</size>
+        <!--TODO-->
+        <building>
+            <destroySound>BuildingDestroyed_Metal_Big</destroySound>
+        </building>
+        <!--TODO-->
+        <costList>
+            <Steel>100</Steel>
+            <ComponentIndustrial>3</ComponentIndustrial>
+        </costList>
+        <comps>
+            <li Class="Spice.Comps.CompProperties_RainCollector">
+                <compClass>Spice.Comps.CompRainCollector</compClass>
+            </li>
+            <li Class="CompProperties_Breakdownable"/>
+        </comps>
+        <terrainAffordanceNeeded>Medium</terrainAffordanceNeeded>
+        <designationCategory>Misc</designationCategory>
+        <!--TODO-->
+        <constructEffect>ConstructMetal</constructEffect>
+        <!--TODO
+        <researchPrerequisites>
+            <li>WaterCollection</li>
+        </researchPrerequisites>-->
+        <constructionSkillPrerequisite>4</constructionSkillPrerequisite>
+    </ThingDef>
+</Defs>
